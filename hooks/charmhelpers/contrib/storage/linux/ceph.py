@@ -63,6 +63,7 @@ from charmhelpers.core.host import (
 from charmhelpers.fetch import (
     apt_install,
 )
+from charmhelpers.core.unitdata import kv
 
 from charmhelpers.core.kernel import modprobe
 from charmhelpers.contrib.openstack.utils import config_flags_parser
@@ -987,18 +988,20 @@ def ensure_ceph_storage(service, pool, rbd_img, sizemb, mount_point,
             service_start(svc)
 
 
-def ensure_ceph_keyring(service, user=None, group=None, relation='ceph'):
+def ensure_ceph_keyring(service, user=None, group=None,
+                        relation='ceph', key=None):
     """Ensures a ceph keyring is created for a named service and optionally
     ensures user and group ownership.
 
-    Returns False if no ceph key is available in relation state.
+    @returns boolean: Flag to indicate whether a key was successfully written
+                      to disk based on either relation data or a supplied key
     """
-    key = None
-    for rid in relation_ids(relation):
-        for unit in related_units(rid):
-            key = relation_get('key', rid=rid, unit=unit)
-            if key:
-                break
+    if not key:
+        for rid in relation_ids(relation):
+            for unit in related_units(rid):
+                key = relation_get('key', rid=rid, unit=unit)
+                if key:
+                    break
 
     if not key:
         return False
@@ -1312,6 +1315,47 @@ def send_request_if_needed(request, relation='ceph'):
             relation_set(relation_id=rid, broker_req=request.request)
 
 
+def is_broker_action_done(action, rid=None, unit=None):
+    """Check whether broker action has completed yet.
+
+    @param action: name of action to be performed
+    @returns True if action complete otherwise False
+    """
+    rdata = relation_get(rid, unit) or {}
+    broker_rsp = rdata.get(get_broker_rsp_key())
+    if not broker_rsp:
+        return False
+
+    rsp = CephBrokerRsp(broker_rsp)
+    unit_name = local_unit().partition('/')[2]
+    key = "unit_{}_ceph_broker_action.{}".format(unit_name, action)
+    kvstore = kv()
+    val = kvstore.get(key=key)
+    if val and val == rsp.request_id:
+        return True
+
+    return False
+
+
+def mark_broker_action_done(action, rid=None, unit=None):
+    """Mark action as having been completed.
+
+    @param action: name of action to be performed
+    @returns None
+    """
+    rdata = relation_get(rid, unit) or {}
+    broker_rsp = rdata.get(get_broker_rsp_key())
+    if not broker_rsp:
+        return
+
+    rsp = CephBrokerRsp(broker_rsp)
+    unit_name = local_unit().partition('/')[2]
+    key = "unit_{}_ceph_broker_action.{}".format(unit_name, action)
+    kvstore = kv()
+    kvstore.set(key=key, value=rsp.request_id)
+    kvstore.flush()
+
+
 class CephConfContext(object):
     """Ceph config (ceph.conf) context.
 
@@ -1328,7 +1372,7 @@ class CephConfContext(object):
             return {}
 
         conf = config_flags_parser(conf)
-        if type(conf) != dict:
+        if not isinstance(conf, dict):
             log("Provided config-flags is not a dictionary - ignoring",
                 level=WARNING)
             return {}
