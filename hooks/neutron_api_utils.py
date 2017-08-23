@@ -158,6 +158,7 @@ NEUTRON_CONF_DIR = "/etc/neutron"
 NEUTRON_CONF = '%s/neutron.conf' % NEUTRON_CONF_DIR
 NEUTRON_LBAAS_CONF = '%s/neutron_lbaas.conf' % NEUTRON_CONF_DIR
 NEUTRON_VPNAAS_CONF = '%s/neutron_vpnaas.conf' % NEUTRON_CONF_DIR
+NEUTRON_LOGGER_CONF = '%s/logging.conf' % NEUTRON_CONF_DIR
 HAPROXY_CONF = '/etc/haproxy/haproxy.cfg'
 APACHE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
 APACHE_24_CONF = '/etc/apache2/sites-available/openstack_https_frontend.conf'
@@ -214,6 +215,10 @@ BASE_RESOURCE_MAP = OrderedDict([
         'contexts': [context.HAProxyContext(singlenode_mode=True),
                      neutron_api_context.HAProxyContext()],
         'services': ['haproxy'],
+    }),
+    (NEUTRON_LOGGER_CONF, {
+        'contexts': [neutron_api_context.NeutronApiLoggingContext()],
+        'services': ['neutron-server'],
     }),
 ])
 
