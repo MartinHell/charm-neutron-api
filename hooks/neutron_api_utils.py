@@ -214,7 +214,9 @@ REQUIRED_INTERFACES = {
 LIBERTY_RESOURCE_MAP = OrderedDict([
     (NEUTRON_LBAAS_CONF, {
         'services': ['neutron-server'],
-        'contexts': [],
+        'contexts': [neutron_api_context.IdentityServiceContext(
+                        service='neutron',
+                        service_user='neutron'),],
     }),
     (NEUTRON_VPNAAS_CONF, {
         'services': ['neutron-server'],
