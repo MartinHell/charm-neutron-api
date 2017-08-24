@@ -351,7 +351,7 @@ class NeutronCCContext(context.NeutronContext):
                 ctxt['vsd_server'] = '1.1.1.1:8443'
         ctxt['verbose'] = config('verbose')
         ctxt['debug'] = config('debug')
-        ctxt['json-logs'] = config('json-logs')  
+        ctxt['json_logs'] = config('json-logs')  
         ctxt['neutron_bind_port'] = \
             determine_api_port(api_port('neutron-server'),
                                singlenode_mode=True)
